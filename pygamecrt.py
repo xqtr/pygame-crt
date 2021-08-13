@@ -103,6 +103,23 @@ class buttonclass():
         res = index
         break
     return res
+    
+def refresh(fb='/dev/fb0'):
+  # We open the TFT screen's framebuffer as a binary file. Note that we will write bytes into it, hence the "wb" operator
+  f = open(fb,"wb")
+  # According to the TFT screen specs, it supports only 16bits pixels depth
+  # Pygame surfaces use 24bits pixels depth by default, but the surface itself provides a very handy method to convert it.
+  # once converted, we write the full byte buffer of the pygame surface into the TFT screen framebuffer like we would in a plain file:
+  f.write(SCREEN.convert(16,0).get_buffer())
+  # We can then close our access to the framebuffer
+  f.close()
+  time.sleep(0.1)
+    
+def printSDLVariables():
+  print("Checking current env variables...")
+  print("SDL_VIDEODRIVER = {0}".format(os.getenv("SDL_VIDEODRIVER")))
+  print("SDL_FBDEV = {0}".format(os.getenv("SDL_FBDEV")))
+  print("DISPLAY = {0}".format(os.getenv("DISPLAY")))
 
 def init():
   global SCREEN, HEIGHT, WIDTH, BUFFER, SCREENHEIGHT, SCREENWIDTH, FONTNAME
@@ -111,19 +128,30 @@ def init():
   "Ininitializes a new pygame screen using the framebuffer"
   # Based on "Python GUI in Linux frame buffer"
   # http://www.karoltomala.com/blog/?p=679
+  
+  printSDLVariables()
+  os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide" # hide pygame prompt message
   disp_no = os.getenv("DISPLAY")
   if disp_no:
     print("I'm running under X display = {0}".format(disp_no))
   
   # Check which frame buffer drivers are available
   # Start with fbcon since directfb hangs with composite output
-  drivers = ['directfb', 'fbcon', 'svgalib', 'x11']
+  drivers = ['fbcon','directfb', 'svgalib', 'fbdev']
+  #drivers = ['directfb', 'fbcon', 'svgalib', 'x11']
   #drivers = ['directfb', 'fbcon', 'svgalib']
   found = False
+  
+    
   for driver in drivers:
+    print("SDL_VIDEODRIVER = {0}".format(os.getenv("SDL_VIDEODRIVER")))
+    print("SDL_FBDEV = {0}".format(os.getenv("SDL_FBDEV")))
     # Make sure that SDL_VIDEODRIVER is set
-    if not os.getenv('SDL_VIDEODRIVER'):
-      os.putenv('SDL_VIDEODRIVER', driver)
+    #if not os.getenv('SDL_VIDEODRIVER'):
+      #os.putenv('SDL_VIDEODRIVER', driver)
+    os.environ['SDL_VIDEODRIVER']=driver
+    os.environ["SDL_FBDEV"] = "/dev/fb0"
+    os.environ['FRAMEBUFFER']="/dev/fb0"
     try:
       pygame.display.init()
     except pygame.error:
@@ -131,9 +159,11 @@ def init():
       continue
     found = True
     break
-
+  
   if not found:
     raise Exception('No suitable video driver found!')
+
+  pygame.init()
   
   size = (pygame.display.Info().current_w, pygame.display.Info().current_h)
   WIDTH,HEIGHT = size
@@ -362,6 +392,7 @@ def bg2color():
   
 def update():
   pygame.display.update()
+  #refresh()
 
 def clrscr():
   global SCREEN
@@ -460,7 +491,8 @@ def readkey():
 class bmpfont():
   
   def __init__(self,imagefile,transrgb = (0, 0, 0)):
-    self.fontimg = pygame.image.load(imagefile).convert()
+    #self.fontimg = pygame.image.load(imagefile).convert()
+    self.fontimg = pygame.image.load(imagefile)
     self.fontimg.set_colorkey(transrgb, RLEACCEL)
     self.charwidth = self.fontimg.get_width() // 16
     self.charheight = self.fontimg.get_height() // 16
