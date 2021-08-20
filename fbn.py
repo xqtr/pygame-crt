@@ -1,7 +1,7 @@
 #!/usr/bin/python
-#coding:utf8
 
-import os,sys
+import os
+import sys
 import tty,termios
 import time
 import random
@@ -11,8 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 fb = None
 
 SCREEN = None
-FONTNAME = 'dernyn.ttf'
-#FONTNAME = "courier new"
+FONTNAME = 'dos.ttf'
 FONTSIZE = 5
 HEIGHT = 0
 WIDTH = 0
@@ -467,8 +466,10 @@ def writechar(c:int()):
     x = SCR_OFFSET_X+(CHARWIDTH*(WHEREX-1))
     y = SCR_OFFSET_Y+(CHARHEIGHT*(WHEREY-1))
     SCRDRAW.rectangle(((x,y,x+CHARWIDTH,y+CHARHEIGHT)), fill=bg2color())
+    #char = chr(c).encode('utf-8').decode('latin-1')
+    #char = chr(c).encode('utf8').decode('latin-1')
     char = chr(c)
-    #unichr(145).encode('latin1')
+    #print(f'{char}, len:{len(char)}')
     SCRDRAW.text((x,y),char, font=font,fill=fg2color())
   else:
     WHEREX = 1
