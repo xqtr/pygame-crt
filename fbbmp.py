@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os
 import sys
@@ -6,24 +6,28 @@ import tty,termios
 import time
 import random
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont, ImageOps
-
-'''
-im = Image.open('tweeter.png')
-layer = Image.new('RGB', im.size, 'red') # "hue" selection is done by choosing a color...
-output = Image.blend(im, layer, 0.5)
-output.save('output.png', 'PNG')
+from PIL import Image, ImageDraw, ImageOps
 
 
-img = Image.open(r"C:\Users\System-Pc\Desktop\pinktree.jpg").convert("L")
-# image colorize function
-img1 = ImageOps.colorize(img, black ="blue", white ="white")
-'''
+# im = Image.open('tweeter.png')
+# layer = Image.new('RGB', im.size, 'red') # "hue" selection is done by choosing a color...
+# output = Image.blend(im, layer, 0.5)
+# output.save('output.png', 'PNG')
+
+
+# img = Image.open(r"C:\Users\System-Pc\Desktop\pinktree.jpg").convert("L")
+# # image colorize function
+# img1 = ImageOps.colorize(img, black ="blue", white ="white")
+
+
+# many fonts maps to download at:
+# https://dwarffortresswiki.org/Tileset_repository#48.C3.9772
+
 
 fb = None
 
 SCREEN = None
-FONTNAME = 'dos.ttf'
+FONTNAME = sys.path[0]+os.sep+'Kein_640x300.png'
 FONTSIZE = 5
 HEIGHT = 0
 WIDTH = 0
@@ -294,8 +298,45 @@ class framebuffer():
     self.screen[y,x]=color
     #self.screen[y:x]=color
 
+class bmpfont():
+  def __init__(self,imagefile,newcharwidth=0,newcharheight=0):
+    global CHARWIDTH, CHARHEIGHT
+    self.fontimg = Image.open(imagefile).convert("L")
+    self.charwidth = self.fontimg.width // 16
+    self.charheight = self.fontimg.height // 16
+    self.ncharwidth = newcharwidth
+    self.ncharheight = newcharheight
+    if newcharwidth!=0:
+      CHARWIDTH = newcharwidth
+      CHARHEIGHT = newcharheight
+    else:
+      CHARWIDTH = self.charwidth
+      CHARHEIGHT = self.charheight
+
+    self.chartable = list()
+    for y in range(16):
+      for x in range(16):
+        w = (x*self.charwidth)+self.charwidth
+        h = (y*self.charheight)+self.charheight
+        tmp = self.fontimg.crop((x*self.charwidth,y*self.charheight,w,h))
+        if newcharwidth!=0:
+          self.chartable.append(tmp.resize((newcharwidth,newcharheight)))
+        else:
+          self.chartable.append(tmp)
+        
+  def writexy(self,surf,x,y,s):
+    global SCREEN, CHARWIDTH, CHARHEIGHT, WHEREX, WHEREY, font, ATTR, SCRDRAW, SCR_OFFSET_X, SCR_OFFSET_Y
+    global SCREENHEIGHT
+    x = SCR_OFFSET_X+(CHARWIDTH*(WHEREX-1))
+    y = SCR_OFFSET_Y+(CHARHEIGHT*(WHEREY-1))
+    #SCRDRAW.rectangle(((x,y,x+CHARWIDTH,y+CHARHEIGHT)), fill=bg2color())
+    xpos,ypos = 0,0
+    for c in s:
+      tmp = ImageOps.colorize(self.chartable[ord(c)], black =bg2color(), white =fg2color())
+      SCREEN.paste(tmp,(x,y,x+CHARWIDTH,y+CHARHEIGHT))
+      xpos += self.ncharwidth
+
 class buttonclass():
-  
   def __init__(self):
     self.items=list()
     self.total = 0
@@ -330,10 +371,10 @@ def printSDLVariables():
   print("SDL_FBDEV = {0}".format(os.getenv("SDL_FBDEV")))
   print("DISPLAY = {0}".format(os.getenv("DISPLAY")))
 
-def init(size):
+def init(size,resize_font=False):
   global SCREEN, HEIGHT, WIDTH, BUFFER, SCREENHEIGHT, SCREENWIDTH, FONTNAME
   global WHEREX, WHEREY, FONTSIZE, MODE, CHARWIDTH, CHARHEIGHT
-  global imgfont, SCRDRAW, SCR_OFFSET_X, SCR_OFFSET_Y
+  global font, SCRDRAW, SCR_OFFSET_X, SCR_OFFSET_Y
   
   WIDTH,HEIGHT = size
   SCREEN = Image.new(mode="RGBA", size=fb.size)
@@ -348,12 +389,13 @@ def init(size):
     for x in range(SCREENWIDTH):
       BUFFER.append([' ',7])
   
+  CHARWIDTH = WIDTH // MODE['x']
+  CHARHEIGHT = HEIGHT // MODE['y']
   
-  
-  font = ImageFont.truetype(FONTNAME, getfontsize())
-  #CHARWIDTH = WIDTH // MODE['x']
-  CHARWIDTH, CHARHEIGHT = font.getsize('#')
-  CHARHEIGHT = getbigestcharheight()
+  if resize_font:
+    font = bmpfont(FONTNAME, CHARWIDTH, CHARHEIGHT)
+  else:
+    font = bmpfont(FONTNAME)
   
   if WIDTH>CHARWIDTH*MODE['x']:
     SCR_OFFSET_X = (WIDTH-CHARWIDTH*MODE['x']) // 2
@@ -375,23 +417,7 @@ def getbigestcharheight():
     if h>hh: hh = h
     
   return hh
-    
   
-  
-def getfontsize():
-  global FONTSIZE,FONTNAME,font
-  a = FONTSIZE
-  while True:
-    a += 1
-    font = ImageFont.truetype(FONTNAME, a)
-    CHARWIDTH, CHARHEIGHT = font.getsize('#')
-    print(CHARWIDTH,CHARWIDTH*80,WIDTH)
-    if CHARWIDTH*MODE['x']>WIDTH:
-      a -= 2
-      return a
-      break
-  
-
 def checkxy():
   global WHEREX,WHEREY
   global SCREENWIDTH,SCREENHEIGHT
@@ -477,12 +503,13 @@ def writechar(c:int()):
     #imgfont.writexy(SCREEN,SCR_OFFSET_X+(CHARWIDTH*(WHEREX-1)),SCR_OFFSET_Y+(CHARHEIGHT*(WHEREY-1)),c)
     x = SCR_OFFSET_X+(CHARWIDTH*(WHEREX-1))
     y = SCR_OFFSET_Y+(CHARHEIGHT*(WHEREY-1))
-    SCRDRAW.rectangle(((x,y,x+CHARWIDTH,y+CHARHEIGHT)), fill=bg2color())
+    #SCRDRAW.rectangle(((x,y,x+CHARWIDTH,y+CHARHEIGHT)), fill=bg2color())
     #char = chr(c).encode('utf-8').decode('latin-1')
     #char = chr(c).encode('utf8').decode('latin-1')
     char = chr(c)
     #print(f'{char}, len:{len(char)}')
-    SCRDRAW.text((x,y),char, font=font,fill=fg2color())
+    #SCRDRAW.text((x,y),char, font=font,fill=fg2color())
+    font.writexy(x,y,fg2color(),char)
   else:
     WHEREX = 1
     WHEREY+= 1
@@ -641,6 +668,24 @@ def cleararea(x1,y1,x2,y2,bg):
 def byte2str(v):
   s=''.join(str(v))
   return s[2:-1]
+  
+def xtopixel(x):
+  global CHARWIDTH, SCR_OFFSET_X
+  return SCR_OFFSET_X + (x-1)*CHARWIDTH
+  
+def ytopixel(y):
+  global CHARHEIGHT, SCR_OFFSET_Y
+  return SCR_OFFSET_Y + (y-1)*CHARHEIGHT
+  
+def dispimage(x1,y1,x2,y2,filename):
+  global SCREEN,CHARHEIGHT,CHARWIDTH
+  img = Image.open(filename)
+  w = xtopixel(x2) - xtopixel(x1)
+  h = ytopixel(y2) - ytopixel(y1)
+  if img.width>w or img.height>h:
+    SCREEN.paste(img.resize((w,h)),(xtopixel(x1),ytopixel(y1),xtopixel(x2),ytopixel(y2)))
+  else:
+    SCREEN.paste(img,(xtopixel(x1),ytopixel(y1)))
 
 def ansibox(x1,y1,x2,y2,box=box_ascii):
   gotoxy(x1,y1)
@@ -650,6 +695,14 @@ def ansibox(x1,y1,x2,y2,box=box_ascii):
   for i in range(y2-y1-1):
     gotoxy(x1,y1+1+i)
     write(box[3]+box[8]*(x2-x1-1)+box[4])
+    
+def videoplay(filename,x,y,w,h):
+  global CHARHEIGHT, CHARWIDTH
+  xpos = xtopixel(x)
+  ypos = ytopixel(y)
+  wd   = w*CHARWIDTH
+  ht   = h*CHARHEIGHT
+  os.system(f'mplayer -vo fbdev2 -geometry {xpos}:{ypos} -fs -zoom -x {wd} -y {ht} {filename} > /dev/null 2>&1')
     
 def popupbox(title,text,y):
   global cfg_popup_title_at, cfg_popup_text_at, cfg_popup_pause_at
@@ -790,7 +843,7 @@ def getkey():
 
 # INITIALIZE FRAMEBUFFER
 fb = framebuffer(0)
-init(fb.size)
+init(fb.size,True) # Set True to resize font and fill the entire screen
 key = None
 
 # MAIN CODE
@@ -799,10 +852,13 @@ ansibox(1,1,79,25,box1)
 cleararea(2,2,78,24,chr(176))
 update()
 ch,ext = readkey()
-writexy(10,10,14,'hello')
+writexy(10,10,14+32,'hello')
 update()
 ch,ext = readkey()
 for a in range(16):
   for b in range(16):
-    writexy(10+a,2+b,14,chr(b*16+a))
+    writexy(10+a,2+b,11,chr(b*16+a))
+dispimage(40,2,79,25,'pot.bmp')
 update()
+readkey()
+videoplay('/home/x/Videos/blocker.mp4',40,2,39,22)
