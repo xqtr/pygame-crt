@@ -1,13 +1,13 @@
 #!/usr/bin/python
 
-import os
+import os, sys
 import pygame
 from pygame.locals import *
 import time
 import random
 
 SCREEN = None
-FONTNAME = '80x25.bmp'
+FONTNAME = sys.path[0]+os.sep+'80x25.bmp'
 #FONTNAME = "courier new"
 FONTSIZE = 50
 HEIGHT = 0
@@ -137,7 +137,7 @@ def init():
   
   # Check which frame buffer drivers are available
   # Start with fbcon since directfb hangs with composite output
-  drivers = ['fbcon','directfb', 'svgalib', 'fbdev']
+  drivers = ['fbcon','directfb', 'svgalib', 'fbdev','x11']
   #drivers = ['directfb', 'fbcon', 'svgalib', 'x11']
   #drivers = ['directfb', 'fbcon', 'svgalib']
   found = False

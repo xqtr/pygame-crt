@@ -27,7 +27,7 @@ from PIL import Image, ImageDraw, ImageOps
 fb = None
 
 SCREEN = None
-FONTNAME = sys.path[0]+os.sep+'Kein_640x300.png'
+FONTNAME = sys.path[0]+os.sep+'Curses_1920x900.png'
 FONTSIZE = 5
 HEIGHT = 0
 WIDTH = 0
